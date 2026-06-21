@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 星座运势小屋</title>
+    <style>
+        /* ---------- 全局重置与字体 ---------- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #0b0e1a 0%, #141b2b 100%);
+            padding: 20px;
+        }
+        /* ---------- 卡片容器 ---------- */
+        .card {
+            max-width: 640px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 40px 32px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+            color: #edf2f7;
+        }
+        /* ---------- 头部 ---------- */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .header .icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #f6d365, #fda085);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header p {
+            color: #a0b4c8;
+            font-size: 14px;
+            margin-top: 6px;
+            letter-spacing: 0.5px;
+        }
+        /* ---------- 表单 ---------- */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.06);
+            color: #f1f5f9;
+            font-size: 16px;
+            outline: none;
+            transition: 0.25s ease;
+        }
+        .form-group input:focus {
+            border-color: #f6d365;
+            background: rgba(255, 255, 255, 0.10);
+            box-shadow: 0 0 0 4px rgba(246, 211, 101, 0.15);
+        }
+        .form-group input::placeholder {
+            color: #6b7f94;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .form-row .form-group {
+            flex: 1;
+            min-width: 140px;
+        }
+        /* ---------- 按钮 ---------- */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 40px;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #f6d365, #fda085);
+            color: #0b0e1a;
+            cursor: pointer;
+            transition: 0.25s ease;
+            box-shadow: 0 8px 20px rgba(253, 160, 133, 0.25);
+            letter-spacing: 0.5px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(253, 160, 133, 0.35); }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* ---------- 加载 ---------- */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px 0 20px;
+            color: #a0b4c8;
+        }
+        .loading .spinner {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(255, 255, 255, 0.08);
+            border-top: 3px solid #f6d365;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* ---------- 结果 ---------- */
+        .result {
+            display: none;
+            margin-top: 28px;
+            padding: 24px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .result .zodiac-badge {
+            display: inline-block;
+            background: rgba(246, 211, 101, 0.18);
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #f6d365;
+            margin-bottom: 14px;
+        }
+        .result .horoscope-text {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .result .horoscope-text h1,
+        .result .horoscope-text h2,
+        .result .horoscope-text h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #f6d365;
+            margin: 12px 0 4px;
+        }
+        .result .horoscope-text strong {
+            color: #fda085;
+        }
+        /* ---------- 塔罗彩蛋 ---------- */
+        .tarot-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            text-align: center;
+        }
+        .tarot-section .btn-tarot {
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            padding: 12px 28px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tarot-section .btn-tarot:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #f1f5f9;
+        }
+        .tarot-result {
+            margin-top: 16px;
+            padding: 18px 20px;
+            border-radius: 20px;
+            background: rgba(253, 160, 133, 0.08);
+            border-left: 3px solid #fda085;
+            text-align: left;
+            display: none;
+        }
+        .tarot-result .card-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fda085;
+            margin-bottom: 6px;
+        }
+        .tarot-result .card-meaning {
+            color: #e2e8f0;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 480px) {
+            .card { padding: 28px 18px; border-radius: 32px; }
+            .header h1 { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <span class="icon">🌟</span>
+            <h1>AI 星座运势</h1>
+            <p>输入生日，让星星为你指引今日方向</p>
+        </div>
+
+        <!-- 表单 -->
+        <form id="horoscopeForm">
+            <div class="form-group">
+                <label for="birthDate">📅 你的出生日期</label>
+                <input type="date" id="birthDate" required />
+                <div style="color: #6b7f94; font-size: 13px; margin-top: 6px;">
+        💡        示例：1995-06-15（点击输入框后，可以用日历选择）
+                </div>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">✨ 查看今日运势</button>
+        </form>
+
+        <!-- 加载 -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>星星正在为你编织运势...</div>
+        </div>
+
+        <!-- 结果 -->
+        <div class="result" id="result">
+            <div class="zodiac-badge" id="zodiacBadge">♈ 白羊座</div>
+            <div class="horoscope-text" id="horoscopeText"></div>
+
+            <!-- 塔罗彩蛋 -->
+            <div class="tarot-section">
+                <button class="btn-tarot" id="tarotBtn">🔮 抽一张塔罗牌</button>
+                <div class="tarot-result" id="tarotResult">
+                    <div class="card-name" id="tarotCardName">愚者</div>
+                    <div class="card-meaning" id="tarotMeaning">解读内容...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('horoscopeForm');
+        const birthDate = document.getElementById('birthDate');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const zodiacBadge = document.getElementById('zodiacBadge');
+        const horoscopeText = document.getElementById('horoscopeText');
+
+        const tarotBtn = document.getElementById('tarotBtn');
+        const tarotResult = document.getElementById('tarotResult');
+        const tarotCardName = document.getElementById('tarotCardName');
+        const tarotMeaning = document.getElementById('tarotMeaning');
+
+        // ---------- 表单提交 ----------
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = birthDate.value;
+            if (!date) {
+                alert('请选择你的出生日期');
+                return;
+            }
+
+            // 隐藏旧结果
+            result.style.display = 'none';
+            tarotResult.style.display = 'none';
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+
+            try {
+                const resp = await fetch('/api/horoscope', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ birth_date: date })
+                });
+
+                const data = await resp.json();
+                if (data.error) {
+                    alert(data.error);
+                    loading.style.display = 'none';
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                // 显示结果
+                zodiacBadge.textContent = `♈ ${data.zodiac} · ${data.date}`;
+                horoscopeText.textContent = data.horoscope;
+                result.style.display = 'block';
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+
+            } catch (err) {
+                alert('网络不太稳定，请稍后再试');
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+
+        // ---------- 塔罗抽牌 ----------
+        tarotBtn.addEventListener('click', async () => {
+            tarotBtn.disabled = true;
+            tarotBtn.textContent = '🔮 牌灵正在回应...';
+
+            try {
+                const resp = await fetch('/api/tarot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: '我今天需要注意什么？' })
+                });
+
+                const data = await resp.json();
+                if (data.error) {
+                    alert(data.error);
+                    tarotBtn.disabled = false;
+                    tarotBtn.textContent = '🔮 抽一张塔罗牌';
+                    return;
+                }
+
+                tarotCardName.textContent = `🃏 ${data.card}`;
+                tarotMeaning.textContent = data.interpretation;
+                tarotResult.style.display = 'block';
+
+            } catch (err) {
+                alert('塔罗牌暂时无法翻开，请稍后再试');
+            }
+
+            tarotBtn.disabled = false;
+            tarotBtn.textContent = '🔮 再抽一张';
+        });
+    </script>
+</body>
+</html>
