@@ -11,6 +11,8 @@ import os
 # 限制配置文件
 RATE_LIMIT_FILE = "rate_limits.json"  # 存储用户调用次数的文件
 DAILY_LIMIT = 3  # 每人每天免费次数
+GLOBAL_DAILY_LIMIT = 100  # 全局每天总次数
+GLOBAL_RATE_LIMIT_FILE = "global_rate_limit.json"  # 全局计数文件
 
 def load_rate_limits():
     """从文件加载调用次数记录"""
@@ -22,6 +24,17 @@ def load_rate_limits():
 def save_rate_limits(limits):
     """保存调用次数记录到文件"""
     with open(RATE_LIMIT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(limits, f, ensure_ascii=False, indent=2)
+def load_global_rate_limits():
+    """从文件加载全局调用次数"""
+    if os.path.exists(GLOBAL_RATE_LIMIT_FILE):
+        with open(GLOBAL_RATE_LIMIT_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_global_rate_limits(limits):
+    """保存全局调用次数记录到文件"""
+    with open(GLOBAL_RATE_LIMIT_FILE, 'w', encoding='utf-8') as f:
         json.dump(limits, f, ensure_ascii=False, indent=2)
 
 # 获取用户标识（简单方案：用IP地址）
@@ -199,6 +212,15 @@ def horoscope_api():
             'error': f'今日免费次数已用完（每天 {DAILY_LIMIT} 次），请明天再来～',
             'limit_reached': True
         }), 429  # 429 表示 Too Many Requests
+    global_limits = load_global_rate_limits()
+    if today_str not in global_limits:
+        global_limits[today_str] = 0
+
+    if global_limits[today_str] >= GLOBAL_DAILY_LIMIT:
+        return jsonify({
+            'error': f'今日全站总次数已用完（共 {GLOBAL_DAILY_LIMIT} 次），请明天再来～',
+            'global_limit_reached': True
+        }), 429
 
     # ===== 原有代码开始 =====
     data = request.get_json()
@@ -222,6 +244,18 @@ def horoscope_api():
     # ===== 新增：调用成功后更新计数 =====
     limits[user_id]["count"] += 1
     save_rate_limits(limits)
+    # 更新全局计数（新增）
+    global_limits[today_str] += 1
+    save_global_rate_limits(global_limits)
+
+    return jsonify({
+        'zodiac': zodiac,
+        'date': today,
+        'horoscope': horoscope_text,
+        'timestamp': datetime.now().isoformat(),
+        'remaining': DAILY_LIMIT - limits[user_id]["count"],
+        'global_remaining': GLOBAL_DAILY_LIMIT - global_limits[today_str]  # 返回全局剩余次数
+    })
 
     return jsonify({
         'zodiac': zodiac,
